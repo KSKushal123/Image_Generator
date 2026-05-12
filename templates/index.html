@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Image Generator | Powered by Stable Diffusion</title>
+    <meta name="description" content="Generate stunning AI images from text prompts using Stable Diffusion XL. Type your imagination and watch it come to life." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-dark: #05050f;
+            --bg-card: rgba(255, 255, 255, 0.04);
+            --border: rgba(255, 255, 255, 0.1);
+            --accent-1: #7c3aed;
+            --accent-2: #a855f7;
+            --accent-3: #06b6d4;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --glow-purple: rgba(124, 58, 237, 0.4);
+            --glow-cyan: rgba(6, 182, 212, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ──────────── ANIMATED BACKGROUND ──────────── */
+        .bg-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.35;
+            animation: float 12s ease-in-out infinite;
+        }
+
+        .orb-1 {
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, #7c3aed, transparent);
+            top: -150px; left: -150px;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, #06b6d4, transparent);
+            bottom: -100px; right: -100px;
+            animation-delay: -6s;
+        }
+
+        .orb-3 {
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, #a855f7, transparent);
+            top: 50%; left: 60%;
+            animation-delay: -3s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -40px) scale(1.05); }
+            66% { transform: translate(-20px, 20px) scale(0.97); }
+        }
+
+        /* ──────────── GRID OVERLAY ──────────── */
+        .grid-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+
+        /* ──────────── LAYOUT ──────────── */
+        .wrapper {
+            position: relative;
+            z-index: 1;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+        }
+
+        /* ──────────── HEADER ──────────── */
+        header {
+            text-align: center;
+            margin-bottom: 56px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(124, 58, 237, 0.15);
+            border: 1px solid rgba(124, 58, 237, 0.4);
+            border-radius: 999px;
+            padding: 6px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #a78bfa;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 24px;
+        }
+
+        .badge-dot {
+            width: 8px; height: 8px;
+            background: #a78bfa;
+            border-radius: 50%;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.7); }
+        }
+
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2.2rem, 6vw, 3.8rem);
+            font-weight: 700;
+            line-height: 1.1;
+            background: linear-gradient(135deg, #f1f5f9 30%, #a78bfa 70%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+        }
+
+        .subtitle {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 0 auto;
+            line-height: 1.7;
+        }
+
+        /* ──────────── CARD ──────────── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 36px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow:
+                0 0 0 1px rgba(255,255,255,0.04) inset,
+                0 32px 64px rgba(0,0,0,0.5);
+            margin-bottom: 32px;
+        }
+
+        .card-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        /* ──────────── PROMPT INPUT ──────────── */
+        .prompt-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        #prompt {
+            width: 100%;
+            min-height: 110px;
+            padding: 18px 20px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            line-height: 1.7;
+            resize: none;
+            outline: none;
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+
+        #prompt::placeholder {
+            color: rgba(148, 163, 184, 0.5);
+        }
+
+        #prompt:focus {
+            border-color: var(--accent-2);
+            box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15);
+        }
+
+        /* ──────────── MODEL SELECTOR ──────────── */
+        .model-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .model-chip {
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.04);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .model-chip:hover {
+            border-color: var(--accent-2);
+            color: var(--text-primary);
+        }
+
+        .model-chip.active {
+            background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+            border-color: transparent;
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(124, 58, 237, 0.4);
+        }
+
+        /* ──────────── GENERATE BUTTON ──────────── */
+        #generate-btn {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 50%, var(--accent-3) 100%);
+            background-size: 200% 200%;
+            color: #fff;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+            animation: gradient-shift 4s ease infinite;
+        }
+
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        #generate-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(124, 58, 237, 0.5);
+        }
+
+        #generate-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        #generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-inner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        /* ──────────── LOADER ──────────── */
+        .loader {
+            display: none;
+            width: 20px; height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ──────────── RESULT SECTION ──────────── */
+        #result-section {
+            display: none;
+        }
+
+        .result-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 32px 64px rgba(0,0,0,0.5);
+            animation: reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes reveal {
+            from { opacity: 0; transform: translateY(24px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .result-header {
+            padding: 20px 28px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .result-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .result-prompt-tag {
+            font-size: 12px;
+            color: var(--text-secondary);
+            max-width: 60%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #download-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: rgba(124, 58, 237, 0.2);
+            border: 1px solid rgba(124, 58, 237, 0.4);
+            border-radius: 999px;
+            color: #c4b5fd;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        #download-btn:hover {
+            background: rgba(124, 58, 237, 0.35);
+            transform: translateY(-1px);
+        }
+
+        .image-container {
+            padding: 28px;
+            display: flex;
+            justify-content: center;
+        }
+
+        #generated-image {
+            max-width: 100%;
+            border-radius: 16px;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 20px 60px rgba(0,0,0,0.6);
+        }
+
+        /* ──────────── ERROR ──────────── */
+        .error-box {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin-top: 16px;
+            color: #fca5a5;
+            font-size: 14px;
+        }
+
+        /* ──────────── EXAMPLE PROMPTS ──────────── */
+        .examples-section {
+            margin-top: 32px;
+        }
+
+        .examples-title {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+        }
+
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 10px;
+        }
+
+        .example-chip {
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            line-height: 1.5;
+        }
+
+        .example-chip:hover {
+            background: rgba(124, 58, 237, 0.1);
+            border-color: rgba(124, 58, 237, 0.35);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        /* ──────────── FOOTER ──────────── */
+        footer {
+            text-align: center;
+            padding-top: 40px;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        footer a {
+            color: #a78bfa;
+            text-decoration: none;
+        }
+
+        /* ──────────── RESPONSIVE ──────────── */
+        @media (max-width: 600px) {
+            .wrapper { padding: 28px 16px 60px; }
+            .card { padding: 24px; }
+            .result-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .result-prompt-tag { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Animated background -->
+<div class="bg-canvas" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+</div>
+<div class="grid-overlay" aria-hidden="true"></div>
+
+<div class="wrapper">
+
+    <!-- Header -->
+    <header>
+        <div class="badge">
+            <span class="badge-dot"></span>
+            Stable Diffusion XL
+        </div>
+        <h1>AI Image Generator</h1>
+        <p class="subtitle">Transform your words into breathtaking visuals. Describe anything — and watch it come alive.</p>
+    </header>
+
+    <!-- Input Card -->
+    <div class="card">
+        <p class="card-label">Your Prompt</p>
+        <div class="prompt-wrapper">
+            <textarea
+                id="prompt"
+                placeholder="A majestic dragon soaring over a neon-lit cyberpunk city at night, cinematic lighting, 8K ultra-detailed..."
+                rows="4"
+                aria-label="Image generation prompt"
+            ></textarea>
+        </div>
+
+        <!-- Model Selector -->
+        <p class="card-label">Model</p>
+        <div class="model-row" id="model-selector" role="group" aria-label="Select AI model">
+            <span class="model-chip active"
+                  data-model="stabilityai/stable-diffusion-xl-base-1.0"
+                  tabindex="0" role="button">SDXL Base</span>
+            <span class="model-chip"
+                  data-model="stabilityai/stable-diffusion-2-1"
+                  tabindex="0" role="button">SD 2.1</span>
+            <span class="model-chip"
+                  data-model="runwayml/stable-diffusion-v1-5"
+                  tabindex="0" role="button">SD 1.5</span>
+            <span class="model-chip"
+                  data-model="CompVis/stable-diffusion-v1-4"
+                  tabindex="0" role="button">SD 1.4</span>
+        </div>
+
+        <button id="generate-btn" aria-label="Generate image">
+            <div class="btn-inner">
+                <span class="loader" id="loader" aria-hidden="true"></span>
+                <span id="btn-text">✦ Generate Image</span>
+            </div>
+        </button>
+
+        <div class="error-box" id="error-box" role="alert" aria-live="polite">
+            <span>⚠️</span>
+            <span id="error-msg"></span>
+        </div>
+    </div>
+
+    <!-- Example Prompts -->
+    <div class="examples-section">
+        <p class="examples-title">✦ Try these prompts</p>
+        <div class="examples-grid">
+            <div class="example-chip" tabindex="0" role="button">A glowing forest spirit in a misty enchanted forest, soft bioluminescence, Studio Ghibli style</div>
+            <div class="example-chip" tabindex="0" role="button">Futuristic astronaut on Mars at sunset, vast red desert, dramatic lighting, photorealistic 8K</div>
+            <div class="example-chip" tabindex="0" role="button">Ancient Japanese temple on a floating island above clouds, golden hour, ultra detailed</div>
+            <div class="example-chip" tabindex="0" role="button">Abstract fluid art, swirling galaxy colors, vibrant neons, 4K high resolution</div>
+        </div>
+    </div>
+
+    <!-- Result Section -->
+    <div id="result-section" style="margin-top: 36px;">
+        <div class="result-card">
+            <div class="result-header">
+                <div>
+                    <p class="result-title">Generated Image</p>
+                    <p class="result-prompt-tag" id="result-prompt-tag"></p>
+                </div>
+                <a id="download-btn" download="ai-generated.png" aria-label="Download generated image">
+                    ↓ Download
+                </a>
+            </div>
+            <div class="image-container">
+                <img id="generated-image" src="" alt="AI Generated Image" />
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Powered by <a href="https://huggingface.co" target="_blank" rel="noopener">Hugging Face</a> Inference API &amp; Flask &nbsp;•&nbsp; Stable Diffusion</p>
+    </footer>
+
+</div>
+
+<script>
+    // ─── State ───────────────────────────────────────────
+    let selectedModel = "stabilityai/stable-diffusion-xl-base-1.0";
+
+    // ─── Model chip selection ─────────────────────────────
+    const modelSelector = document.getElementById("model-selector");
+    modelSelector.querySelectorAll(".model-chip").forEach(chip => {
+        const activate = () => {
+            modelSelector.querySelectorAll(".model-chip").forEach(c => c.classList.remove("active"));
+            chip.classList.add("active");
+            selectedModel = chip.dataset.model;
+        };
+        chip.addEventListener("click", activate);
+        chip.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") activate(); });
+    });
+
+    // ─── Example prompts ──────────────────────────────────
+    document.querySelectorAll(".example-chip").forEach(chip => {
+        const fill = () => {
+            document.getElementById("prompt").value = chip.textContent.trim();
+            document.getElementById("prompt").focus();
+        };
+        chip.addEventListener("click", fill);
+        chip.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") fill(); });
+    });
+
+    // ─── Generate ─────────────────────────────────────────
+    const btn = document.getElementById("generate-btn");
+    const loader = document.getElementById("loader");
+    const btnText = document.getElementById("btn-text");
+    const errorBox = document.getElementById("error-box");
+    const errorMsg = document.getElementById("error-msg");
+    const resultSection = document.getElementById("result-section");
+    const generatedImage = document.getElementById("generated-image");
+    const downloadBtn = document.getElementById("download-btn");
+    const resultPromptTag = document.getElementById("result-prompt-tag");
+
+    btn.addEventListener("click", generateImage);
+
+    document.getElementById("prompt").addEventListener("keydown", e => {
+        if (e.key === "Enter" && e.ctrlKey) generateImage();
+    });
+
+    async function generateImage() {
+        const prompt = document.getElementById("prompt").value.trim();
+
+        // Validation
+        if (!prompt) {
+            showError("Please enter a prompt first.");
+            return;
+        }
+
+        // UI: loading state
+        setLoading(true);
+        hideError();
+        resultSection.style.display = "none";
+
+        try {
+            const response = await fetch("/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt, model: selectedModel }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "Generation failed. Please try again.");
+            }
+
+            // Display image
+            const imgSrc = `data:image/png;base64,${data.image}`;
+            generatedImage.src = imgSrc;
+            downloadBtn.href = imgSrc;
+            resultPromptTag.textContent = `"${data.prompt}"`;
+            resultSection.style.display = "block";
+
+            // Scroll to result
+            setTimeout(() => {
+                resultSection.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 100);
+
+        } catch (err) {
+            showError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    function setLoading(isLoading) {
+        btn.disabled = isLoading;
+        loader.style.display = isLoading ? "block" : "none";
+        btnText.textContent = isLoading ? "Generating…" : "✦ Generate Image";
+    }
+
+    function showError(msg) {
+        errorMsg.textContent = msg;
+        errorBox.style.display = "flex";
+    }
+
+    function hideError() {
+        errorBox.style.display = "none";
+    }
+</script>
+
+</body>
+</html>
